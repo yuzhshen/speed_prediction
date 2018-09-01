@@ -27,7 +27,9 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
         # get features from previous 2 frames, current frame, next 2 frames
         # shape is (5, height, width)
-        return (self.x[idx:idx+5],self.y[idx])
+        features = torch.tensor(self.x[idx:idx+5], dtype=torch.float)
+        label = torch.tensor(self.y[idx], dtype=torch.float).unsqueeze(0)
+        return (features,label)
     
     def dataset_from_video(self, filepath):
         start_time = time.time()
@@ -70,14 +72,14 @@ class Model(nn.Module):
         x = x.view(-1, np.prod(x.shape[1:]))
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = self.fc3(x)
         return x
 
 if __name__ == '__main__':
-    MAX_EPOCHS = 20
+    MAX_EPOCHS = 15
     BATCH_SIZE = 32
     BATCHES_PER_REPORT = 20
-    MODEL_PATH = 'models/conv_model'
+    MODEL_PATH = 'models/conv_model_decay_1_shuffled'
 
     cap = cv2.VideoCapture('data/train.mp4')
     FRAME_COUNT = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -89,22 +91,21 @@ if __name__ == '__main__':
     val_idx = int(0.9*FRAME_COUNT)
     tr_data = ImageDataset(indices=list(range(0,val_idx)))
     val_data = ImageDataset(indices=list(range(val_idx,FRAME_COUNT)))
-    tr_generator = DataLoader(tr_data, batch_size=BATCH_SIZE)
+    tr_generator = DataLoader(tr_data, batch_size=BATCH_SIZE, shuffle=True)
     val_generator = DataLoader(val_data, batch_size=FRAME_COUNT-val_idx)
     net = Model()
     try:
         net.load_state_dict(torch.load(MODEL_PATH))
     except FileNotFoundError:
-        optimizer = optim.Adam(net.parameters())
+        optimizer = optim.Adam(net.parameters(),weight_decay=0.1)
         criterion = nn.MSELoss()
-            
         for epochs in range(MAX_EPOCHS):
             running_loss = 0
             for enum, batch in enumerate(tr_generator,1):
-                inpt, labels = batch[0].float(), batch[1].float()
-                output = net(inpt)
-                loss = criterion(output.flatten(), labels)
                 optimizer.zero_grad()
+                inpt, labels = batch[0], batch[1]
+                output = net(inpt)
+                loss = criterion(output, labels)
                 loss.backward()
                 optimizer.step()
                 running_loss+=loss.item()
@@ -113,9 +114,9 @@ if __name__ == '__main__':
                         .format(epochs+1, enum*BATCH_SIZE/val_idx*100,running_loss/BATCHES_PER_REPORT))
                     running_loss = 0
             for batch in val_generator:
-                inpt, labels = batch[0].float(), batch[1].float()
+                inpt, labels = batch[0], batch[1]
                 output = net(inpt)
-                val_loss = criterion(output.flatten(), labels)
+                val_loss = criterion(output, labels)
                 print('Validation loss: {}'.format(val_loss))
         torch.save(net.state_dict(), MODEL_PATH)
 
