@@ -1,5 +1,6 @@
-CUSTOM_README.txt
 README
+__pycache__/
 data/
 models/
+submission/
 .DS_Store
