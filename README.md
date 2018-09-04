@@ -1,6 +1,3 @@
-In this file I outline an overview of my code followed by a description of my general approach to 
-this problem, including some ideas that didn't make it to the final submission.
-
 ## Overview
 
 ### The Model
@@ -37,8 +34,6 @@ data back in, so I left the model as is.
 limitations. Since I only have enough GPU memory to train one epoch per script call, I structure
 the training process as a sequence of script calls and structure **model.py** accordingly.
 - **optflow.py** - optical flow dataset feature extraction experiments (not used in final model)
-- **data/** - contains test and training videos as well as training labels and test predictions
-- **models/** - contains my final model
 
 ### Challenges
 
@@ -58,7 +53,7 @@ Lucas-Kanade optical flow algorithm to identify potential correspondences. Howev
 proved to be unsuccessful due to having trouble identifying correspondence points and therefore
 the resulting features were pretty sparse and incapable of providing enough information. The code
 for my initial optical flow feature extraction is in optflow.py (none of the code is used in the
-final submission) for reference.
+actual script) for reference.
 
 ### Step 2: Convolutional Neural Networks
 
@@ -89,9 +84,6 @@ get more data for cases where 3 frame bundles could have trouble determining the
 the car passes under a tunnel, but decided against it in the end due to processing power and 
 overfitting concerns.
 
-Also, because running on CPU was too slow and I only had enough memory on GPU to run one epoch, I
+Also, because training on CPU was too slow and I only had enough memory on GPU to run one epoch, I
 had to write a script to continuously run python scripts for each epoch, loading the previous epoch
 and saving a new one.
-
-I used Adam as a gradient descent algorithm and though that is perhaps not ideal, I did not have the
-time to tune the SGD+momentum hyperparameters to their optimal values.
